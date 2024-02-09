@@ -9,10 +9,13 @@ import Unsafe.Coerce (unsafeCoerce)
 
 newtype SVar s a = SVar Int deriving (Show, Eq)
 
+varEq :: SVar s a -> SVar s b -> Bool
+varEq (SVar a) (SVar b) = a == b
+
 newtype Subst s = Subst { subst :: forall a. SVar s a -> Maybe a }
 
 updateSubst :: Subst s -> SVar s a -> Maybe a -> Subst s
-updateSubst (Subst s) v a = Subst $ \v' -> if v == unsafeCoerce v' then unsafeCoerce a else s v'
+updateSubst (Subst s) v a = Subst $ \v' -> if v `varEq` v' then unsafeCoerce a else s v'
 
 newtype KEval s nondet a = KEval { runK :: Subst s -> nondet (a, Subst s) } deriving (Functor)
 
