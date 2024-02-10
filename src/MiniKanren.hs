@@ -64,4 +64,11 @@ fresh2 f = fresh $ \a -> fresh $ \b -> f a b
 fresh3 :: (MiniKanren rel var, Fresh a, Fresh b,  Fresh c) => (a var -> b var -> c var -> rel s) -> rel s
 fresh3 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> f a b c
 
+fresh4 :: (MiniKanren rel var, Fresh var a, Fresh var b,  Fresh var c, Fresh var d) => (a -> b -> c -> d -> rel s) -> rel s
+fresh4 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> fresh $ \d -> f a b c d 
+
+fresh5 :: (MiniKanren rel var, Fresh var a, Fresh var b,  Fresh var c, Fresh var d, Fresh var e) => (a -> b -> c -> d -> e -> rel s) -> rel s
+fresh5 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> fresh $ \d -> fresh $ \e -> f a b c d e 
+
+
 data NoVars a deriving (Show, Eq)
