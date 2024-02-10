@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -30,6 +30,10 @@ library
       Interpreters.SubstKanren
       MiniKanren
       Relations.Addo
+      Relations.Appendo
+      Relations.Sorto
+      Types.Bool
+      Types.List
       Types.Nat
   other-modules:
       Paths_taglessMiniKanren
