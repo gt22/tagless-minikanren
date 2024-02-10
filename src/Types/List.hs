@@ -29,7 +29,7 @@ instance Fresh (List elem) where
     makeFresh :: var (List elem var) -> List elem var
     makeFresh = VarL
 
-instance (Deref elem Int) => Deref (List elem) [Int] where
+instance (Deref elem a) => Deref (List elem) [a] where
 
     derefVal Nil = return []
     derefVal (Cons h t) = do
