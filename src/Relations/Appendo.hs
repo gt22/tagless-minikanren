@@ -12,7 +12,7 @@ import Control.Applicative
 --     return (x,y)
 
 
-appendo :: (MiniKanren rel var) => List var (Nat var) -> List var (Nat var) -> List var (Nat var) -> rel ()
+appendo :: (MiniKanren rel var) => List Nat var -> List Nat var -> List Nat var -> rel ()
 appendo x y z = asum 
     [ do
         x === Nil

@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, FunctionalDependencies, FlexibleInstances, UndecidableInstances, EmptyDataDeriving #-}
+{-# LANGUAGE GADTs, Rank2Types, FunctionalDependencies, FlexibleInstances, UndecidableInstances, EmptyDataDeriving #-}
 module MiniKanren where
 
 import Control.Applicative
@@ -8,7 +8,7 @@ class LogicVar a where
 
     isVar :: a var -> Maybe (var (a var))
 
-    vmapM :: (Monad m) => (var (a var) -> m (var' (a var'))) -> a var -> m (a var')
+    vmapM :: (Monad m) => (forall x. var (x var) -> m (var' (x var'))) -> a var -> m (a var')
 
 class (LogicVar a) => Unif a where
 
@@ -64,10 +64,10 @@ fresh2 f = fresh $ \a -> fresh $ \b -> f a b
 fresh3 :: (MiniKanren rel var, Fresh a, Fresh b,  Fresh c) => (a var -> b var -> c var -> rel s) -> rel s
 fresh3 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> f a b c
 
-fresh4 :: (MiniKanren rel var, Fresh var a, Fresh var b,  Fresh var c, Fresh var d) => (a -> b -> c -> d -> rel s) -> rel s
+fresh4 :: (MiniKanren rel var, Fresh a, Fresh b,  Fresh c, Fresh d) => (a var -> b var -> c var -> d var -> rel s) -> rel s
 fresh4 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> fresh $ \d -> f a b c d 
 
-fresh5 :: (MiniKanren rel var, Fresh var a, Fresh var b,  Fresh var c, Fresh var d, Fresh var e) => (a -> b -> c -> d -> e -> rel s) -> rel s
+fresh5 :: (MiniKanren rel var, Fresh a, Fresh b,  Fresh c, Fresh d, Fresh e) => (a var -> b var -> c var -> d var -> e var -> rel s) -> rel s
 fresh5 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> fresh $ \d -> fresh $ \e -> f a b c d e 
 
 

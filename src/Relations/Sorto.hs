@@ -48,7 +48,7 @@ minmaxo a b min max = asum
         gto a b Trueo       
     ]
 
-smallesto :: (MiniKanren rel var) => List var (Nat var) -> Nat var -> List var (Nat var) -> rel () 
+smallesto :: (MiniKanren rel var) => List Nat var -> Nat var -> List Nat var -> rel () 
 smallesto l s l' = asum 
     [ do 
         l === Cons s Nil 
@@ -60,7 +60,7 @@ smallesto l s l' = asum
         smallesto t s' t'
     ]
 
-sorto :: (MiniKanren rel var) => List var (Nat var) -> List var (Nat var) -> rel () 
+sorto :: (MiniKanren rel var) => List Nat var -> List Nat var -> rel () 
 sorto x y = asum 
     [ do 
         x === Nil 

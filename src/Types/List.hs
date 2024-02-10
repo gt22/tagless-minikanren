@@ -5,27 +5,31 @@ module Types.List where
 import MiniKanren
 import Control.Applicative
 
-data List var elem = VarL (var (List var elem)) | Nil | Cons elem (List var elem) 
+data List elem var = VarL (var (List elem var)) | Nil | Cons (elem var) (List elem var) 
 
-deriving instance (Show elem, Show (var (List var elem))) => Show (List var elem)
+deriving instance (Show (elem var), Show (var (List elem var))) => Show (List elem var)
 
-instance LogicVar var (List var elem) where
+instance (LogicVar elem) => LogicVar (List elem) where
 
     isVar (VarL v) = Just v
     isVar _ = Nothing
 
-instance (MiniKanren action var, Unif action var elem) => Unif action var (List var elem) where
+    f `vmapM` (VarL v) = VarL <$> f v
+    _ `vmapM` Nil = return Nil
+    f `vmapM` (Cons h t) = Cons <$> (f `vmapM` h) <*> (f `vmapM` t)
+
+instance (Unif elem) => Unif (List elem) where
 
     unifyVal Nil Nil = return ()
     unifyVal (Cons h t) (Cons h' t') = unify h h' >> unify t t'
     unifyVal _ _ = empty
 
-instance Fresh var (List var elem) where
+instance Fresh (List elem) where
 
-    makeFresh :: var (List var elem) -> List var elem
+    makeFresh :: var (List elem var) -> List elem var
     makeFresh = VarL
 
-instance (MiniKanrenEval action var, Deref action var elem Int) => Deref action var (List var elem) [Int] where
+instance (Deref elem Int) => Deref (List elem) [Int] where
 
     derefVal Nil = return []
     derefVal (Cons h t) = do
@@ -34,7 +38,7 @@ instance (MiniKanrenEval action var, Deref action var elem Int) => Deref action 
       return (h : t)
     derefVal _ = undefined
 
-instance (MiniKanrenEval action var, LogicVar var elem) => Deref action var (List var elem) (List NoVars elem) where
+instance (LogicVar elem, Deref elem (elem NoVars)) => Deref (List elem) (List elem NoVars) where
 
     derefVal Nil = return Nil
     derefVal (Cons h t) = do 
