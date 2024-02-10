@@ -32,6 +32,8 @@ instance (Monad m) => Monad (BacktrT m) where
     (BTT x) >>= f = BTT $ \g -> x (\a -> (unBTT $ f a) g)
 
 
+instance (Monad m) => MonadPlus (BacktrT m)
+
 instance (Monad m) => MonadFail (BacktrT m) where
 
     fail _ = empty

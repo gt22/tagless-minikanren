@@ -9,8 +9,8 @@ import Unsafe.Coerce (unsafeCoerce)
 
 newtype SVar s a = SVar Int deriving (Show, Eq)
 
-varEq :: SVar s a -> SVar s b -> Bool
-varEq (SVar a) (SVar b) = a == b
+instance EqVar (SVar s) where 
+    varEq (SVar a) (SVar b) = a == b
 
 newtype Subst s = Subst { subst :: forall a. SVar s a -> Maybe a }
 
@@ -54,7 +54,7 @@ instance (Monad nondet, Alternative nondet) => MiniKanren (KEvalAct s nondet) (S
         modify succ
         let v = SVar x
         lift $ setVal v Nothing
-        return $ SVar x
+        return v
 
     unifyVar v a = do
         b' <- lift $ readVal v

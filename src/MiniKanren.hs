@@ -2,34 +2,37 @@
 module MiniKanren where
 
 import Control.Applicative
+import Control.Monad
 
-class LogicVar var a where
+class LogicVar a where
 
-    isVar :: a -> Maybe (var a)
+    isVar :: a var -> Maybe (var (a var))
 
-class (MiniKanren rel var, LogicVar var a) => Unif rel var a | rel -> var where
+    vmapM :: (Monad m) => (var (a var) -> m (var' (a var'))) -> a var -> m (a var')
 
-    unifyVal :: a -> a -> rel ()
+class (LogicVar a) => Unif a where
 
-    unify :: a -> a -> rel ()
+    unifyVal :: (MiniKanren rel var) => a var -> a var -> rel ()
+
+    unify :: (MiniKanren rel var) => a var -> a var -> rel ()
     unify a b = case isVar a of
         Nothing -> case isVar b of
             Nothing -> unifyVal a b
             Just b' -> unifyVar b' a
         Just a' -> unifyVar a' b
 
-(===) :: (Unif action var a) => a -> a -> action ()
+(===) :: (Unif a, MiniKanren rel var) => a var -> a var -> rel ()
 (===) = unify
 
-class Fresh var a where
+class Fresh a where
 
-    makeFresh :: var a -> a
+    makeFresh :: var (a var) -> a var
 
-class (MiniKanrenEval rel var, LogicVar var a) => Deref rel var a g where
+class LogicVar a => Deref a g where
 
-    derefVal :: a -> rel g
+    derefVal :: (MiniKanrenEval rel var) => a var -> rel g
 
-    deref :: a -> rel g
+    deref :: (MiniKanrenEval rel var) => a var -> rel g
     deref a = case isVar a of
         Nothing -> derefVal a
         Just v -> do
@@ -38,27 +41,27 @@ class (MiniKanrenEval rel var, LogicVar var a) => Deref rel var a g where
                 Nothing -> error "deref fail"
                 Just av -> deref av
 
-instance (MiniKanrenEval rel var, LogicVar var a) => Deref rel var a a where
+class EqVar var where
 
-    derefVal = return
+    varEq :: var a -> var b -> Bool
 
-class (Monad rel, Alternative rel) => MiniKanren rel var | rel -> var where
+class (MonadPlus rel) => MiniKanren rel var | rel -> var where
 
-    freshVar :: rel (var a)
+    freshVar :: rel (var (a var))
 
-    fresh :: (Fresh var a) => (a -> rel s) -> rel s
+    fresh :: (Fresh a) => (a var -> rel s) -> rel s
     fresh f = freshVar >>= f . makeFresh
 
-    unifyVar :: (Unif rel var a) => var a -> a -> rel ()
+    unifyVar :: (Unif a) => var (a var) -> a var -> rel ()
 
 class (MiniKanren rel var) => MiniKanrenEval rel var where
 
-    readVar :: var a -> rel (Maybe a)
+    readVar :: (LogicVar a) => var (a var) -> rel (Maybe (a var))
 
-fresh2 :: (MiniKanren rel var, Fresh var a, Fresh var b) => (a -> b -> rel s) -> rel s
+fresh2 :: (MiniKanren rel var, Fresh a, Fresh b) => (a var -> b var -> rel s) -> rel s
 fresh2 f = fresh $ \a -> fresh $ \b -> f a b
 
-fresh3 :: (MiniKanren rel var, Fresh var a, Fresh var b,  Fresh var c) => (a -> b -> c -> rel s) -> rel s
+fresh3 :: (MiniKanren rel var, Fresh a, Fresh b,  Fresh c) => (a var -> b var -> c var -> rel s) -> rel s
 fresh3 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> f a b c
 
 data NoVars a deriving (Show, Eq)

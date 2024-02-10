@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, FlexibleInstances, FunctionalDependencies, StandaloneDeriving #-}
+{-# LANGUAGE GADTs, FlexibleInstances, MultiParamTypeClasses, Rank2Types #-}
 module Interpreters.KanrenTree where
 
 import MiniKanren
@@ -9,12 +9,15 @@ import Control.Monad
 data Kanren a where
     Fail :: Kanren a
     Return :: a -> Kanren a
-    Unify :: KanrenVar a -> a -> Kanren ()
+    Unify :: (Unif a) => KanrenVar (a KanrenVar) -> (a KanrenVar) -> Kanren ()
 
-    Conj :: Kanren () -> Kanren a -> Kanren a
+    Conj :: Kanren x -> Kanren a -> Kanren a
     Disj :: Kanren a -> Kanren a -> Kanren a
 
 newtype KanrenVar a = KVar Int deriving (Show, Eq)
+
+instance EqVar KanrenVar where
+    varEq (KVar a) (KVar b) = a == b
 
 -- deriving instance (Show a) => Show (Kanren a)
 
