@@ -34,10 +34,6 @@ instance (Monad m) => Monad (BacktrT m) where
 
 instance (Monad m) => MonadPlus (BacktrT m)
 
-instance (Monad m) => MonadFail (BacktrT m) where
-
-    fail _ = empty
-
 instance MonadTrans BacktrT where
     lift m = BTT (m >>=)
 
@@ -67,18 +63,14 @@ writeRef ref a' = BTT $ \cont -> do
     writeSTRef ref a
     return ret
 
-instance MiniKanren (LP s) (Var s) where
+newtype LVar s a = Var { unVar :: Ref s (Maybe a)}
+
+instance MiniKanren (LP s) (LVar s) where
 
     freshVar = Var <$> newRef Nothing
 
-    unifyVar (Var ref) a = do
-        b' <- readRef ref
-        case b' of
-            Nothing -> writeRef ref (Just a)
-            Just b -> unify a b
+    unifyVar = unifyVar_ (writeRef . unVar)
 
-instance MiniKanrenEval (LP s) (Var s) where
+instance MiniKanrenEval (LP s) (LVar s) where
 
     readVar = readRef . unVar
-
-newtype Var s a = Var { unVar :: Ref s (Maybe a)}

@@ -56,11 +56,7 @@ instance (Monad nondet, Alternative nondet) => MiniKanren (KEvalAct s nondet) (S
         lift $ setVal v Nothing
         return v
 
-    unifyVar v a = do
-        b' <- lift $ readVal v
-        case b' of
-            Nothing -> lift $ setVal v (Just a)
-            Just b -> unify a b
+    unifyVar = unifyVar_ (\v a -> lift $ setVal v a)
 
 instance (Monad nondet, Alternative nondet) => MiniKanrenEval (KEvalAct s nondet) (SVar s) where
 

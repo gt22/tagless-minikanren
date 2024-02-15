@@ -37,14 +37,14 @@ gto x y b = fresh $ \b' -> do
     leo x y b'
 
 minmaxo :: (MiniKanren rel var) => Nat var -> Nat var -> Nat var -> Nat var -> rel () 
-minmaxo a b min max = asum 
+minmaxo a b mn mx = asum 
     [ do 
-        min === a 
-        max === b 
+        mn === a 
+        mx === b 
         leo a b Trueo 
     , do 
-        max === a 
-        min === b 
+        mx === a 
+        mn === b 
         gto a b Trueo       
     ]
 
@@ -53,10 +53,10 @@ smallesto l s l' = asum
     [ do 
         l === Cons s Nil 
         l' === Nil 
-    , fresh5 $ \h t s' t' max -> do 
-        l' === Cons max t' 
+    , fresh5 $ \h t s' t' mx -> do 
+        l' === Cons mx t' 
         l === Cons h t 
-        minmaxo h s' s max 
+        minmaxo h s' s mx 
         smallesto t s' t'
     ]
 

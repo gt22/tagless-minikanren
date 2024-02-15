@@ -11,23 +11,20 @@ deriving instance (Show (var (Boolo var))) => Show (Boolo var)
 
 instance LogicVar Boolo where
 
+    makeFresh = VarN
+
     isVar (VarN v) = Just v
     isVar _ = Nothing
 
-    f `vmapM` (VarN v) = VarN <$> f v
-    _ `vmapM` Trueo = return Trueo
-    _ `vmapM` Falso = return Falso
+    _ `vmapMVal` Trueo = return Trueo
+    _ `vmapMVal` Falso = return Falso
+    _ `vmapMVal` _ = undefined
 
 instance Unif Boolo where
 
     unifyVal Trueo Trueo = return ()
     unifyVal Falso Falso = return ()
     unifyVal _ _ = empty
-
-instance Fresh Boolo where
-
-    makeFresh :: var (Boolo var) -> Boolo var
-    makeFresh = VarN
 
 instance Deref Boolo Bool where
 

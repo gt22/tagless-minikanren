@@ -11,12 +11,14 @@ deriving instance (Show (elem var), Show (var (List elem var))) => Show (List el
 
 instance (LogicVar elem) => LogicVar (List elem) where
 
+    makeFresh = VarL
+
     isVar (VarL v) = Just v
     isVar _ = Nothing
 
-    f `vmapM` (VarL v) = VarL <$> f v
-    _ `vmapM` Nil = return Nil
-    f `vmapM` (Cons h t) = Cons <$> (f `vmapM` h) <*> (f `vmapM` t)
+    _ `vmapMVal` Nil = return Nil
+    f `vmapMVal` (Cons h t) = Cons <$> (f `vmapM` h) <*> (f `vmapM` t)
+    _ `vmapMVal` _ = undefined
 
 instance (Unif elem) => Unif (List elem) where
 
@@ -24,25 +26,14 @@ instance (Unif elem) => Unif (List elem) where
     unifyVal (Cons h t) (Cons h' t') = unify h h' >> unify t t'
     unifyVal _ _ = empty
 
-instance Fresh (List elem) where
-
-    makeFresh :: var (List elem var) -> List elem var
-    makeFresh = VarL
-
 instance (Deref elem a) => Deref (List elem) [a] where
 
     derefVal Nil = return []
-    derefVal (Cons h t) = do
-      h <- deref h 
-      t <- deref t 
-      return (h : t)
+    derefVal (Cons h t) = (:) <$> deref h <*> deref t
     derefVal _ = undefined
 
 instance (LogicVar elem, Deref elem (elem NoVars)) => Deref (List elem) (List elem NoVars) where
 
     derefVal Nil = return Nil
-    derefVal (Cons h t) = do 
-      h <- deref h 
-      t <- deref t 
-      return (Cons h t)      
+    derefVal (Cons h t) = Cons <$> deref h <*> deref t   
     derefVal _ = undefined

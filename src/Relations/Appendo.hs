@@ -1,18 +1,10 @@
 module Relations.Appendo where
 
 import MiniKanren
-import Types.Nat
 import Types.List
 import Control.Applicative
 
--- liftTuple :: (Monad m) => (m a, m b) -> m (a, b)
--- liftTuple (a,b) = do
---     x <- a
---     y <- b
---     return (x,y)
-
-
-appendo :: (MiniKanren rel var, Unif t, Fresh t) => List t var -> List t var -> List t var -> rel ()
+appendo :: (MiniKanren rel var, Unif t) => List t var -> List t var -> List t var -> rel ()
 appendo x y z = asum 
     [ do
         x === Nil

@@ -10,22 +10,20 @@ deriving instance (Show (var (Nat var))) => Show (Nat var)
 
 instance LogicVar Nat where
 
+    makeFresh = VarN
+
     isVar (VarN v) = Just v
     isVar _ = Nothing
 
-    f `vmapM` (VarN v) = VarN <$> f v
-    _ `vmapM` Z = return Z
-    f `vmapM` (S n) = S <$> (f `vmapM` n)
+    _ `vmapMVal` Z = return Z
+    f `vmapMVal` (S n) = S <$> (f `vmapM` n)
+    _ `vmapMVal` _ = undefined
 
 instance Unif Nat where
 
     unifyVal Z Z = return ()
     unifyVal (S a) (S b) = unify a b
     unifyVal _ _ = empty
-
-instance Fresh Nat where
-
-    makeFresh = VarN
 
 instance Deref Nat Int where
 
