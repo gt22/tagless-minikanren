@@ -4,20 +4,14 @@ module Types.Nat where
 import MiniKanren
 import Control.Applicative
 
-data Nat var = VarN (var (Nat var)) | Z | S (Nat var) 
+data Nat var = Z | S (Logic Nat var)
 
-deriving instance (Show (var (Nat var))) => Show (Nat var)
+deriving instance (Show (Var Nat var)) => Show (Nat var)
 
 instance LogicVar Nat where
 
-    makeFresh = VarN
-
-    isVar (VarN v) = Just v
-    isVar _ = Nothing
-
-    _ `vmapMVal` Z = return Z
-    f `vmapMVal` (S n) = S <$> (f `vmapM` n)
-    _ `vmapMVal` _ = undefined
+    _ `vmapMVal` Z = return (Ground Z)
+    f `vmapMVal` (S n) = Ground . S <$> (f `vmapM` n)
 
 instance Unif Nat where
 
@@ -29,10 +23,8 @@ instance Deref Nat Int where
 
     derefVal Z = return 0
     derefVal (S n) = succ <$> deref n
-    derefVal _ = undefined
 
 instance Deref Nat (Nat NoVars) where
 
     derefVal Z = return Z
-    derefVal (S n) = S <$> deref n
-    derefVal _ = undefined
+    derefVal (S n) = S <$> (Ground <$> deref n)

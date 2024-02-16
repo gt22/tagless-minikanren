@@ -1,24 +1,18 @@
-{-# LANGUAGE StandaloneDeriving, MultiParamTypeClasses, FlexibleInstances, UndecidableInstances #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE StandaloneDeriving, MultiParamTypeClasses, FlexibleInstances, UndecidableInstances, KindSignatures #-}
 module Types.Bool where
 
 import MiniKanren
 import Control.Applicative
+import Data.Kind (Type)
 
-data Boolo var = VarN (var (Boolo var)) | Trueo | Falso  
+data Boolo (var :: Type -> Type) = Trueo | Falso  
 
 deriving instance (Show (var (Boolo var))) => Show (Boolo var)
 
 instance LogicVar Boolo where
 
-    makeFresh = VarN
-
-    isVar (VarN v) = Just v
-    isVar _ = Nothing
-
-    _ `vmapMVal` Trueo = return Trueo
-    _ `vmapMVal` Falso = return Falso
-    _ `vmapMVal` _ = undefined
+    _ `vmapMVal` Trueo = return (Ground Trueo)
+    _ `vmapMVal` Falso = return (Ground Falso)
 
 instance Unif Boolo where
 
@@ -29,11 +23,9 @@ instance Unif Boolo where
 instance Deref Boolo Bool where
 
     derefVal Trueo = return True
-    derefVal Falso = return False 
-    derefVal _ = undefined
+    derefVal Falso = return False
 
 instance Deref Boolo (Boolo NoVars) where
 
     derefVal Trueo = return Trueo
-    derefVal Falso = return Falso 
-    derefVal _ = undefined
+    derefVal Falso = return Falso

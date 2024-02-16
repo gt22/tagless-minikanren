@@ -11,11 +11,11 @@ liftTuple (a,b) = do
     return (x,y)
 
 
-addo :: (MiniKanren rel var) => Nat var -> Nat var -> Nat var -> rel ()
-addo x y z = asum 
+addo :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Nat var -> rel ()
+addo x y z = asum
     [ do
         x === Z
-        y === z
+        y <=> z
     , fresh2 $ \x' z' -> do
         x === S x'
         z === S z'

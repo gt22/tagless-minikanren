@@ -9,7 +9,7 @@ import Control.Monad
 data Kanren a where
     Fail :: Kanren a
     Return :: a -> Kanren a
-    Unify :: (Unif a) => KanrenVar (a KanrenVar) -> (a KanrenVar) -> Kanren ()
+    Unify :: (Unif a) => Var a KanrenVar -> (Logic a KanrenVar) -> Kanren ()
 
     Conj :: Kanren x -> Kanren a -> Kanren a
     Disj :: Kanren a -> Kanren a -> Kanren a

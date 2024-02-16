@@ -1,45 +1,55 @@
-{-# LANGUAGE Rank2Types, FunctionalDependencies, FlexibleInstances, UndecidableInstances, EmptyDataDeriving #-}
+{-# LANGUAGE Rank2Types, FunctionalDependencies, FlexibleInstances, UndecidableInstances, EmptyDataDeriving, StandaloneDeriving #-}
 module MiniKanren where
 
 import Control.Monad
 
-type Var x var = var (x var)
+type Var x var = var (Logic x var)
+
+data Logic a var = Free (Var a var) | Ground (a var)
+
+deriving instance (Show (Var a var), Show (a var)) => Show (Logic a var)
+
+makeFresh :: Var a var -> Logic a var
+makeFresh = Free
+
+isVar :: Logic a var -> Either (Var a var) (a var)
+isVar (Free v) = Left v
+isVar (Ground x) = Right x
 
 class LogicVar a where
 
-    makeFresh :: Var a var -> a var
+    vmapMVal :: (Monad m) => (forall x. Var x var -> m (Var x var')) -> a var -> m (Logic a var')
 
-    isVar :: a var -> Maybe (Var a var)
-
-    vmapMVal :: (Monad m) => (forall x. Var x var -> m (Var x var')) -> a var -> m (a var')
-
-    vmapM :: (Monad m) => (forall x. Var x var -> m (Var x var')) -> a var -> m (a var')
+    vmapM :: (Monad m) => (forall x. Var x var -> m (Var x var')) -> Logic a var -> m (Logic a var')
     vmapM f x = case isVar x of
-        Just v -> makeFresh <$> f v
-        Nothing -> f `vmapMVal` x
+        Left v -> makeFresh <$> f v
+        Right x' -> f `vmapMVal` x'
 
 class (LogicVar a) => Unif a where
 
     unifyVal :: (MiniKanren rel var) => a var -> a var -> rel ()
 
-unify :: (Unif a, MiniKanren rel var) => a var -> a var -> rel ()
+unify :: (Unif a, MiniKanren rel var) => Logic a var -> Logic a var -> rel ()
 unify a b = case isVar a of
-    Nothing -> case isVar b of
-        Nothing -> unifyVal a b
-        Just b' -> unifyVar b' a
-    Just a' -> unifyVar a' b
+    Right a' -> case isVar b of
+        Right b' -> unifyVal a' b'
+        Left b' -> unifyVar b' a
+    Left a' -> unifyVar a' b
 
-(===) :: (Unif a, MiniKanren rel var) => a var -> a var -> rel ()
-(===) = unify
+(===) :: (Unif a, MiniKanren rel var) => Logic a var -> a var -> rel ()
+a === b = unify a (Ground b)
+
+(<=>) :: (Unif a, MiniKanren rel var) => Logic a var -> Logic a var -> rel ()
+a <=> b = unify a b
 
 class LogicVar a => Deref a g where
 
     derefVal :: (MiniKanrenEval rel var) => a var -> rel g
 
-deref :: (MiniKanrenEval rel var, Deref a g) => a var -> rel g
+deref :: (MiniKanrenEval rel var, Deref a g) => Logic a var -> rel g
 deref a = case isVar a of
-    Nothing -> derefVal a
-    Just v -> do
+    Right a' -> derefVal a'
+    Left v -> do
         a' <- readVar v
         case a' of
             Nothing -> error "deref fail"
@@ -53,9 +63,9 @@ class (MonadPlus rel) => MiniKanren rel var | rel -> var where
 
     freshVar :: rel (Var a var)
 
-    unifyVar :: (Unif a) => Var a var -> a var -> rel ()
+    unifyVar :: (Unif a) => Var a var -> Logic a var -> rel ()
 
-unifyVar_ :: (Unif a, MiniKanrenEval rel var) => (Var a var -> Maybe (a var) -> rel ()) -> Var a var -> a var -> rel ()
+unifyVar_ :: (Unif a, MiniKanrenEval rel var) => (Var a var -> Maybe (Logic a var) -> rel ()) -> Var a var -> Logic a var -> rel ()
 unifyVar_ set v a = do
         b' <- readVar v
         case b' of
@@ -64,21 +74,21 @@ unifyVar_ set v a = do
 
 class (MiniKanren rel var) => MiniKanrenEval rel var where
 
-    readVar :: (LogicVar a) => Var a var -> rel (Maybe (a var))
+    readVar :: Var a var -> rel (Maybe (Logic a var))
 
-fresh :: (MiniKanren rel var, LogicVar a) => (a var -> rel s) -> rel s
+fresh :: (MiniKanren rel var) => (Logic a var -> rel s) -> rel s
 fresh f = freshVar >>= f . makeFresh
 
-fresh2 :: (MiniKanren rel var, LogicVar a, LogicVar b) => (a var -> b var -> rel s) -> rel s
+fresh2 :: (MiniKanren rel var) => (Logic a var -> Logic b var -> rel s) -> rel s
 fresh2 f = fresh $ \a -> fresh $ \b -> f a b
 
-fresh3 :: (MiniKanren rel var, LogicVar a, LogicVar b,  LogicVar c) => (a var -> b var -> c var -> rel s) -> rel s
+fresh3 :: (MiniKanren rel var) => (Logic a var -> Logic b var -> Logic c var -> rel s) -> rel s
 fresh3 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> f a b c
 
-fresh4 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c, LogicVar d) => (a var -> b var -> c var -> d var -> rel s) -> rel s
+fresh4 :: (MiniKanren rel var) => (Logic a var -> Logic b var -> Logic c var -> Logic d var -> rel s) -> rel s
 fresh4 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> fresh $ \d -> f a b c d 
 
-fresh5 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c, LogicVar d, LogicVar e) => (a var -> b var -> c var -> d var -> e var -> rel s) -> rel s
+fresh5 :: (MiniKanren rel var) => (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> rel s) -> rel s
 fresh5 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> fresh $ \d -> fresh $ \e -> f a b c d e 
 
 
