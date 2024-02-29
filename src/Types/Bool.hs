@@ -1,18 +1,24 @@
-{-# LANGUAGE StandaloneDeriving, MultiParamTypeClasses, FlexibleInstances, UndecidableInstances, KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, KindSignatures #-}
 module Types.Bool where
 
 import MiniKanren
 import Control.Applicative
 import Data.Kind (Type)
 
-data Boolo (var :: Type -> Type) = Trueo | Falso  
+data Boolo (var :: Type -> Type) = Trueo | Falso
 
-deriving instance (Show (var (Boolo var))) => Show (Boolo var)
+trueo :: Logic Boolo var
+trueo = Ground Trueo
+falso :: Logic Boolo var
+falso = Ground Falso
 
 instance LogicVar Boolo where
 
-    _ `vmapMVal` Trueo = return (Ground Trueo)
-    _ `vmapMVal` Falso = return (Ground Falso)
+    _ `vmapMVal` Trueo = return Trueo
+    _ `vmapMVal` Falso = return Falso
+
+    showTerm Trueo = showString "trueo"
+    showTerm Falso = showString "falso"
 
 instance Unif Boolo where
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, FlexibleInstances, MultiParamTypeClasses, Rank2Types #-}
+{-# LANGUAGE GADTs, FlexibleInstances, MultiParamTypeClasses #-}
 module Interpreters.KanrenTree where
 
 import MiniKanren
@@ -9,10 +9,14 @@ import Control.Monad
 data Kanren a where
     Fail :: Kanren a
     Return :: a -> Kanren a
+    Deref :: (Deref x g) => Var x KanrenVar -> Kanren (Maybe g)
+    Fresh :: Var x KanrenVar -> Kanren a -> Kanren a
     Unify :: (Unif a) => Var a KanrenVar -> (Logic a KanrenVar) -> Kanren ()
 
-    Conj :: Kanren x -> Kanren a -> Kanren a
+    Conj :: Kanren x -> (x -> Kanren a) -> Kanren a
     Disj :: Kanren a -> Kanren a -> Kanren a
+
+
 
 newtype KanrenVar a = KVar Int deriving (Show, Eq)
 
@@ -37,9 +41,9 @@ instance Monad Kanren where
 
     Fail >>= _ = Fail
     (Return a) >>= f = f a
-    k@(Unify _ _) >>= f = Conj k (f ())
-    (Conj a b) >>= f = Conj a (b >>= f)
+    (Fresh v a) >>= f = Fresh v $ a >>= f
     (Disj a b) >>= f = Disj (a >>= f) (b >>= f)
+    a >>= f = Conj a f
 
 instance Alternative Kanren where
 
@@ -54,11 +58,15 @@ type KanrenAct = StateT Int Kanren
 instance MiniKanren KanrenAct KanrenVar where
 
     freshVar = do
-        v <- get
+        v <- gets KVar
         modify succ
-        return $ KVar v
+        lift $ Fresh v $ return v
 
     unifyVar v a = lift $ Unify v a
+
+instance MiniKanrenEval KanrenAct KanrenVar where
+
+    readVar = lift . Deref
 
 buildKanren :: KanrenAct a -> Kanren a
 buildKanren x = evalStateT x 0

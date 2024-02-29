@@ -69,8 +69,13 @@ instance MiniKanren (LP s) (LVar s) where
 
     freshVar = Var <$> newRef Nothing
 
-    unifyVar = unifyVar_ (writeRef . unVar)
+    unifyVar = unifyVar_ (readRef . unVar) (writeRef . unVar)
 
 instance MiniKanrenEval (LP s) (LVar s) where
 
-    readVar = readRef . unVar
+    readVar v = do
+        v' <- readRef (unVar v)
+        case v' of
+            Nothing -> return Nothing
+            Just xs -> Just <$> deref xs
+

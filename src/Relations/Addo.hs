@@ -21,3 +21,14 @@ addo x y z = asum
         z === S z'
         addo x' y z'
     ]
+
+addoNoRec :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Nat var -> rel ()
+addoNoRec x y z = asum
+    [ do
+        x === Z
+        y <=> z
+    , fresh2 $ \x' z' -> do
+        x === S x'
+        z === S z'
+        -- addo x' y z'
+    ]

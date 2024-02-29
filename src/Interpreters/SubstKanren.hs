@@ -56,11 +56,15 @@ instance (Monad nondet, Alternative nondet) => MiniKanren (KEvalAct s nondet) (S
         lift $ setVal v Nothing
         return v
 
-    unifyVar = unifyVar_ (\v a -> lift $ setVal v a)
+    unifyVar = unifyVar_ (lift . readVal) (\v a -> lift $ setVal v a)
 
 instance (Monad nondet, Alternative nondet) => MiniKanrenEval (KEvalAct s nondet) (SVar s) where
 
-    readVar = lift . readVal
+    readVar v = do
+        v' <- lift $ readVal v
+        case v' of 
+            Nothing -> return Nothing
+            Just x -> Just <$> deref x
 
 runSubstKanren :: (Monad nondet) => (forall s. StateT Int (KEval s nondet) a) -> nondet a
 runSubstKanren k = fst <$> runK (evalStateT k 0) (Subst $ \v -> error $ "Invalid variable " ++ show v)
