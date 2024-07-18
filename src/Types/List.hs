@@ -1,10 +1,12 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, StandaloneDeriving, UndecidableInstances #-}
 module Types.List where
 
 import MiniKanren
 import Control.Applicative
 
 data List elem var = Nil | Cons (Logic elem var) (Logic (List elem) var)
+
+deriving instance (Show (Logic elem var), Show (Logic (List elem) var)) => Show (List elem var)
 
 nil :: Logic (List elem) var
 nil = Ground Nil
@@ -25,6 +27,7 @@ instance (Unif elem) => Unif (List elem) where
     unifyVal Nil Nil = return ()
     unifyVal (Cons h t) (Cons h' t') = unify h h' >> unify t t'
     unifyVal _ _ = empty
+
 
 instance (Deref elem a) => Deref (List elem) [a] where
 

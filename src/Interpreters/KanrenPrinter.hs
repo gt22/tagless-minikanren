@@ -78,18 +78,33 @@ instance EqVar (SVar s) where
 instance Show (SVar s a) where
     showsPrec _ (SVar v) = showString "x" . shows v
 
+makeFreshVar :: KPrinter s (Var a (SVar s))
+makeFreshVar = SVar <$> do
+    v <- get
+    modify succ
+    return v
+
 instance MiniKanren (KPrinter s) (SVar s) where
 
     freshVar = do
-        x <- get
-        modify succ
-        let v = SVar x
+        v <- makeFreshVar
         lift $ Value Ret v $ showString "fresh $ \\" . shows v . showString " -> "
+
+    argVar arg = do
+        v <- makeFreshVar
+        lift $ Value Ret v $ showString "argument " . showLogic arg . showString " $ \\" . shows v . showString " -> "
 
     unifyVar v u = lift $ Unify $ showString "(" . shows v . showString " <=> " . showLogic u . showString ")"
 
+
+    call (Relation n _) = do
+        lift $ Value BindRet (error "evaluated call value") $ showString "call (" . showString n . showString ")"
+
+    call' (Relation _ r) = r
+    
 instance MiniKanrenEval (KPrinter s) (SVar s) where
     readVar x = lift $ Value BindRet (Just $ error "evaluated variable value") $ showString "deref " . shows x
+
 
 printKanren :: (forall s. KPrinter s a) -> String
 printKanren p = showsKanren (evalStateT p 0) ""

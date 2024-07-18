@@ -5,7 +5,7 @@ import MiniKanren
 import Control.Applicative
 import Data.Kind (Type)
 
-data Boolo (var :: Type -> Type) = Trueo | Falso
+data Boolo (var :: Type -> Type) = Trueo | Falso deriving (Show)
 
 trueo :: Logic Boolo var
 trueo = Ground Trueo

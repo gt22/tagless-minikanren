@@ -4,31 +4,13 @@ import MiniKanren
 import Types.Nat
 import Control.Applicative
 
-liftTuple :: (Monad m) => (m a, m b) -> m (a, b)
-liftTuple (a,b) = do
-    x <- a
-    y <- b
-    return (x,y)
-
-
-addo :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Nat var -> rel ()
-addo x y z = asum
+addoRel :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Nat var -> Relation rel ()
+addoRel = relation3 "addo" $ \x y z -> asum
     [ do
         x === Z
         y <=> z
     , fresh2 $ \x' z' -> do
         x === S x'
         z === S z'
-        addo x' y z'
-    ]
-
-addoNoRec :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Nat var -> rel ()
-addoNoRec x y z = asum
-    [ do
-        x === Z
-        y <=> z
-    , fresh2 $ \x' z' -> do
-        x === S x'
-        z === S z'
-        -- addo x' y z'
+        call $ addoRel x' y z'
     ]

@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types, FlexibleInstances, MultiParamTypeClasses, DeriveFunctor #-}
+{-# LANGUAGE Rank2Types, FlexibleInstances, MultiParamTypeClasses #-}
 module Interpreters.SubstKanren where
 
 import Control.Monad
@@ -6,6 +6,8 @@ import Control.Applicative
 import MiniKanren
 import Control.Monad.State
 import Unsafe.Coerce (unsafeCoerce)
+import Stream (Delayable, immature)
+import OptionT
 
 newtype SVar s a = SVar Int deriving (Show, Eq)
 
@@ -14,51 +16,54 @@ instance EqVar (SVar s) where
 
 newtype Subst s = Subst { subst :: forall a. SVar s a -> Maybe a }
 
-updateSubst :: Subst s -> SVar s a -> Maybe a -> Subst s
-updateSubst (Subst s) v a = Subst $ \v' -> if v `varEq` v' then unsafeCoerce a else s v'
+emptySubst :: Subst s
+emptySubst = Subst $ \v -> error $ "Invalid variable " ++ show v
 
-newtype KEval s nondet a = KEval { runK :: Subst s -> nondet (a, Subst s) } deriving (Functor)
+readSubst :: SVar s a -> Subst s -> Maybe a
+readSubst v s = subst s v
 
-setVal :: (Monad nondet) => SVar s a -> Maybe a -> KEval s nondet ()
-setVal v a = KEval $ \s -> return ((), updateSubst s v a)
+updateSubst :: SVar s a -> Maybe a -> Subst s -> Subst s
+updateSubst v a (Subst s) = Subst $ \v' -> if v `varEq` v' then unsafeCoerce a else s v'
 
-readVal :: (Monad nondet) => SVar s a -> KEval s nondet (Maybe a)
-readVal v = KEval $ \s -> return (subst s v, s)
+type Computation s nondet = OptionT (StateT (Subst s) nondet)
 
-instance (Monad nondet) => Applicative (KEval s nondet) where
+type KEval s nondet = StateT Int (Computation s nondet)
 
-    pure a = KEval $ \s -> pure (a, s)
+setVal :: (Monad nondet) => SVar s a -> Maybe a -> Computation s nondet ()
+setVal v a = liftOption $ modify (updateSubst v a)
 
-    (<*>) = ap
+readVal :: (Monad nondet) => SVar s a -> Computation s nondet (Maybe a)
+readVal v = liftOption $ gets (readSubst v)
 
-instance (Monad nondet) => Monad (KEval s nondet) where
+instance (Delayable nondet) => Delayable (KEval s nondet) where
+    
+    immature = mapStateT (mapOptionT (mapStateT immature))
 
-    return = pure
+makeFreshVar :: (MonadPlus nondet) => KEval s nondet (Var a (SVar s))
+makeFreshVar = SVar <$> do
+    v <- get
+    modify succ
+    return v
 
-    (KEval f) >>= g = KEval $ f >=> (\(a, s') -> runK (g a) s')
+makeVar :: (MonadPlus nondet) => Maybe (Logic a (SVar s)) -> KEval s nondet (Var a (SVar s))
+makeVar x = do
+    v <- makeFreshVar
+    lift $ setVal v x
+    return v
 
-instance (Monad nondet, Alternative nondet) => Alternative (KEval s nondet) where
+instance (Delayable nondet) => MiniKanren (KEval s nondet) (SVar s) where
 
-    empty = KEval $ const empty
+    freshVar = makeVar Nothing
 
-    (KEval f) <|> (KEval g) = KEval $ \s -> f s <|> g s
-
-instance (Monad nondet, Alternative nondet) => MonadPlus (KEval s nondet)
-
-type KEvalAct s nondet = StateT Int (KEval s nondet)
-
-instance (Monad nondet, Alternative nondet) => MiniKanren (KEvalAct s nondet) (SVar s) where
-
-    freshVar = do
-        x <- get
-        modify succ
-        let v = SVar x
-        lift $ setVal v Nothing
-        return v
+    argVar = makeVar . Just
 
     unifyVar = unifyVar_ (lift . readVal) (\v a -> lift $ setVal v a)
 
-instance (Monad nondet, Alternative nondet) => MiniKanrenEval (KEvalAct s nondet) (SVar s) where
+    call (Relation _ r) = immature r
+
+    call' (Relation _ r) = r
+
+instance (Delayable nondet) => MiniKanrenEval (KEval s nondet) (SVar s) where
 
     readVar v = do
         v' <- lift $ readVal v
@@ -66,5 +71,5 @@ instance (Monad nondet, Alternative nondet) => MiniKanrenEval (KEvalAct s nondet
             Nothing -> return Nothing
             Just x -> Just <$> deref x
 
-runSubstKanren :: (Monad nondet) => (forall s. StateT Int (KEval s nondet) a) -> nondet a
-runSubstKanren k = fst <$> runK (evalStateT k 0) (Subst $ \v -> error $ "Invalid variable " ++ show v)
+runSubstKanren :: (MonadPlus nondet) => (forall s. KEval s nondet a) -> nondet a
+runSubstKanren k = evalStateT (fromOptionT empty $ evalStateT k 0) emptySubst

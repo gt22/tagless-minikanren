@@ -65,11 +65,19 @@ writeRef ref a' = BTT $ \cont -> do
 
 newtype LVar s a = Var { unVar :: Ref s (Maybe a)}
 
+instance Show (LVar s a) where
+
+    show _ = "LVar unshowable"
+
 instance MiniKanren (LP s) (LVar s) where
 
     freshVar = Var <$> newRef Nothing
 
+    argVar arg = Var <$> newRef (Just arg)
+
     unifyVar = unifyVar_ (readRef . unVar) (writeRef . unVar)
+
+    call (Relation _ r) = r
 
 instance MiniKanrenEval (LP s) (LVar s) where
 
@@ -78,4 +86,3 @@ instance MiniKanrenEval (LP s) (LVar s) where
         case v' of
             Nothing -> return Nothing
             Just xs -> Just <$> deref xs
-

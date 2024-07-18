@@ -31,9 +31,11 @@ library
       Interpreters.SubstKanren
       Interpreters.TreeMap
       MiniKanren
+      OptionT
       Relations.Addo
       Relations.Appendo
       Relations.Sorto
+      Stream
       Types.Bool
       Types.List
       Types.Nat

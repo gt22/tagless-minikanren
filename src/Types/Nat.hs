@@ -1,10 +1,15 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Types.Nat where
 
 import MiniKanren
 import Control.Applicative
 
 data Nat var = Z | S (Logic Nat var)
+
+deriving instance (Show (Logic Nat var)) => Show (Nat var)
 
 zro :: Logic Nat var
 zro = Ground Z
@@ -31,7 +36,7 @@ instance Deref Nat Int where
     derefVal Z = return 0
     derefVal (S n) = succ <$> deref n
 
--- instance Deref Nat (Nat NoVars) where
+instance Deref Nat (Nat NoVars) where
 
---     derefVal Z = return Z
---     derefVal (S n) = S <$> (Ground <$> deref n)
+    derefVal Z = return Z
+    derefVal (S n) = S <$> (Ground <$> deref n)
