@@ -16,21 +16,12 @@ data Kanren s a where
     Arg :: (LogicVar x) => Logic x (KanrenVar s) -> Var x (KanrenVar s) -> Kanren s a -> Kanren s a
     Unify :: (Unif a) => Var a (KanrenVar s) -> (Logic a (KanrenVar s)) -> Kanren s ()
 
-    Call :: String -> Kanren s ret -> Kanren s ret
-    TransparentCall :: String -> Kanren s ret -> Kanren s ret
+    Call :: String -> Kanren s () -> Kanren s ()
+    TransparentCall :: String -> Kanren s () -> Kanren s ()
 
+    KConj :: [Kanren s ()] -> Kanren s ()
     Conj :: Kanren s x -> (x -> Kanren s a) -> Kanren s a
     Disj :: Kanren s a -> Kanren s a -> Kanren s a
-
--- forceTree :: Kanren s a -> Kanren s a
--- forceTree Fail = Fail
--- forceTree (Return a) = seq a (Return a)
--- forceTree (Deref v) = seq v (Deref v)
--- forceTree (Fresh v a) = seq v (Fresh v (forceTree a))
--- forceTree (Unify v a) = seq v $ seq a (Unify v a)
--- forceTree (Call r) = Call r
--- forceTree (Conj a b) = Conj (forceTree a) (const $ forceTree (b undefined))
--- forceTree (Disj a b) = Disj (forceTree a) (forceTree b)
 
 newtype KanrenVar s a = KVar Int deriving (Show, Eq)
 
@@ -46,7 +37,13 @@ instance Applicative (Kanren s) where
     pure = Return
 
     (<*>) = ap
+-- a, b, fresh v in (c, d)
+-- b, a, fresh v in (c, d)
+-- a, b, fresh v in (d, c)
+-- b, a, fresh v in (d, c)
+-- a, fresh v in (c, d), b
 
+-- argument $ \x -> Disj (KConj (fresh v in a) b) (c) >>= deref x
 instance Monad (Kanren s) where
 
     return = pure
@@ -56,6 +53,18 @@ instance Monad (Kanren s) where
     (Fresh v a) >>= f = Fresh v $ a >>= f
     (Arg arg v a) >>= f = Arg arg v $ a >>= f
     -- (Disj a b) >>= f = Disj (a >>= f) (b >>= f)
+    x@(KConj xs) >>= f = case f () of
+        y@(Unify _ _) -> KConj (xs ++ [y])
+        y@(Call _ _) -> KConj (xs ++ [y])
+        y -> Conj x (const y)
+    x@(Unify _ _) >>= f = case f () of
+        y@(Unify _ _) -> KConj [x, y]
+        y@(Call _ _) -> KConj [x, y]
+        y -> Conj x (const y)
+    x@(Call _ _) >>= f = case f () of
+        y@(Unify _ _) -> KConj [x, y]
+        y@(Call _ _) -> KConj [x, y]
+        y -> Conj x (const y)
     a >>= f = Conj a f
 
 instance Alternative (Kanren s) where

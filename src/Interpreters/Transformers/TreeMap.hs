@@ -1,11 +1,12 @@
 {-# LANGUAGE GADTs, FlexibleInstances, MultiParamTypeClasses, Rank2Types #-}
-module Interpreters.TreeMap where
+module Interpreters.Transformers.TreeMap where
 
 import MiniKanren
 import Interpreters.KanrenTree
 import Control.Monad.State
 import Control.Applicative
 import Unsafe.Coerce (unsafeCoerce)
+import Data.Foldable (traverse_)
 
 newtype VarMapping s var = VarMapping {
     varSubst :: forall a. Var a (KanrenVar s) -> Var a var
@@ -53,8 +54,9 @@ evalKanren (TransparentCall n r) = do
     s <- get
     let r' = evalStateT (evalKanren r) s
     lift $ call' (relation n r')
+evalKanren (KConj xs) = traverse_ evalKanren xs
 evalKanren (Conj a b) = evalKanren a >>= evalKanren . b
 evalKanren (Disj a b) = evalKanren a <|> evalKanren b
 
-runEvalKanren :: (MiniKanrenEval rel var) => (forall s. Kanren s a) -> rel a
+runEvalKanren :: (MiniKanrenEval rel var) => (Kanren s a) -> rel a
 runEvalKanren x = evalStateT (evalKanren x) (VarMapping $ \v -> error $ "Unknown variable: " ++ show v)

@@ -17,7 +17,7 @@ data Logic a var = Free (Var a var) | Ground (a var)
 deriving instance (Show (Var a var), Show (a var)) => Show (Logic a var)
 
 
-data Relation (rel :: Type -> Type) ret = Relation String (rel ret)
+data Relation (rel :: Type -> Type) = Relation String (rel ())
 
 
 -- type family ValidRelation (rel :: Type -> Type) (built :: Type -> Type) (var :: Type -> Type) t :: Constraint where
@@ -77,10 +77,10 @@ class (MonadPlus rel) => MiniKanren rel var | rel -> var where
 
     unifyVar :: (Unif a) => Var a var -> Logic a var -> rel ()
 
-    call :: Relation rel ret -> rel ret
+    call :: Relation rel -> rel ()
 
     -- transparent call
-    call' :: Relation rel ret -> rel ret
+    call' :: Relation rel -> rel ()
     call' = call
 
 
@@ -118,19 +118,19 @@ fresh4 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> fresh $ \d -> f a b c d
 fresh5 :: (MiniKanren rel var) => (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> rel s) -> rel s
 fresh5 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> fresh $ \d -> fresh $ \e -> f a b c d e
 
-run :: (MiniKanrenEval rel var, Deref a a') => (Logic a var -> Relation rel s) -> rel a'
+run :: (MiniKanrenEval rel var, Deref a a') => (Logic a var -> Relation rel) -> rel a'
 run f = fresh $ \x -> do
     _ <- call' $ f x
     deref x
 
-run2 :: (MiniKanrenEval rel var, Deref a a', Deref b b') => (Logic a var -> Logic b var -> Relation rel s) -> rel (a', b')
+run2 :: (MiniKanrenEval rel var, Deref a a', Deref b b') => (Logic a var -> Logic b var -> Relation rel) -> rel (a', b')
 run2 f = fresh2 $ \x y -> do
     _ <- call' $ f x y
     a <- deref x
     b <- deref y
     return (a, b)
 
-run3 :: (MiniKanrenEval rel var, Deref a a', Deref b b', Deref c c') => (Logic a var -> Logic b var -> Logic c var -> Relation rel s) -> rel (a', b', c')
+run3 :: (MiniKanrenEval rel var, Deref a a', Deref b b', Deref c c') => (Logic a var -> Logic b var -> Logic c var -> Relation rel) -> rel (a', b', c')
 run3 f = fresh3 $ \x y z -> do
     _ <- call' $ f x y z
     a <- deref x
@@ -138,7 +138,7 @@ run3 f = fresh3 $ \x y z -> do
     c <- deref z
     return (a, b, c)
 
-run4 :: (MiniKanrenEval rel var, Deref a a', Deref b b', Deref c c', Deref d d') => (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Relation rel s) -> rel (a', b', c', d')
+run4 :: (MiniKanrenEval rel var, Deref a a', Deref b b', Deref c c', Deref d d') => (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Relation rel) -> rel (a', b', c', d')
 run4 f = fresh4 $ \x y z w -> do
     _ <- call' $ f x y z w
     a <- deref x
@@ -147,7 +147,7 @@ run4 f = fresh4 $ \x y z w -> do
     d <- deref w
     return (a, b, c, d)
 
-run5 :: (MiniKanrenEval rel var, Deref a a', Deref b b', Deref c c', Deref d d', Deref e e') => (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> Relation rel s) -> rel (a', b', c', d', e')
+run5 :: (MiniKanrenEval rel var, Deref a a', Deref b b', Deref c c', Deref d d', Deref e e') => (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> Relation rel) -> rel (a', b', c', d', e')
 run5 f = fresh5 $ \x y z w q -> do
     _ <- call' $ f x y z w q
     a <- deref x
@@ -172,22 +172,22 @@ argument4 a_ b_ c_ d_ f = argument a_ $ \a -> argument b_ $ \b -> argument c_ $ 
 argument5 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c, LogicVar d, LogicVar e) => Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> rel s) -> rel s
 argument5 a_ b_ c_ d_ e_ f = argument a_ $ \a -> argument b_ $ \b -> argument c_ $ \c -> argument d_ $ \d -> argument e_ $ \e -> f a b c d e
 
-relation :: String -> rel ret -> Relation rel ret
+relation :: String -> rel () -> Relation rel
 relation = Relation
 
-relation1 :: (MiniKanren rel var, LogicVar a) => String -> (Logic a var -> rel ret) -> Logic a var -> Relation rel ret
+relation1 :: (MiniKanren rel var, LogicVar a) => String -> (Logic a var -> rel ()) -> Logic a var -> Relation rel
 relation1 n f a_ = Relation n $ argument a_ f
 
-relation2 :: (MiniKanren rel var, LogicVar a, LogicVar b) => String -> (Logic a var -> Logic b var -> rel ret) -> Logic a var -> Logic b var -> Relation rel ret
+relation2 :: (MiniKanren rel var, LogicVar a, LogicVar b) => String -> (Logic a var -> Logic b var -> rel ()) -> Logic a var -> Logic b var -> Relation rel
 relation2 n f a_ b_ = Relation n $ argument2 a_ b_ f
 
-relation3 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c) => String -> (Logic a var -> Logic b var -> Logic c var -> rel ret) -> Logic a var -> Logic b var -> Logic c var -> Relation rel ret
+relation3 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c) => String -> (Logic a var -> Logic b var -> Logic c var -> rel ()) -> Logic a var -> Logic b var -> Logic c var -> Relation rel
 relation3 n f a_ b_ c_ = Relation n $ argument3 a_ b_ c_ f
 
-relation4 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c, LogicVar d) => String -> (Logic a var -> Logic b var -> Logic c var -> Logic d var -> rel ret) -> Logic a var -> Logic b var -> Logic c var -> Logic d var -> Relation rel ret
+relation4 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c, LogicVar d) => String -> (Logic a var -> Logic b var -> Logic c var -> Logic d var -> rel ()) -> Logic a var -> Logic b var -> Logic c var -> Logic d var -> Relation rel
 relation4 n f a_ b_ c_ d_ = Relation n $ argument4 a_ b_ c_ d_ f
 
-relation5 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c, LogicVar d, LogicVar e) => String -> (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> rel ret) -> Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> Relation rel ret
+relation5 :: (MiniKanren rel var, LogicVar a, LogicVar b, LogicVar c, LogicVar d, LogicVar e) => String -> (Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> rel ()) -> Logic a var -> Logic b var -> Logic c var -> Logic d var -> Logic e var -> Relation rel
 relation5 n f a_ b_ c_ d_ e_ = Relation n $ argument5 a_ b_ c_ d_ e_ f
 
 data NoVars a deriving (Show, Eq)

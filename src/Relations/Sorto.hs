@@ -6,67 +6,67 @@ import Types.Bool
 import Types.List 
 import Control.Applicative
 
-leo :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Boolo var -> Relation rel ()
+leo :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Boolo var -> Relation rel
 leo = relation3 "leo" $ \x y b -> asum 
     [ do 
-        x === Z 
-        b === Trueo 
+        x <=> zro
+        b <=> trueo
     , fresh $ \zz -> do 
-        x === S zz 
-        y === Z 
-        b === Falso 
+        x <=> suc zz 
+        y <=> zro
+        b <=> falso 
     , fresh2 $ \x' y' -> do 
-        x === S x' 
-        y === S y' 
+        x <=> suc x' 
+        y <=> suc y' 
         call $ leo x' y' b 
     ]
 
-noto :: (MiniKanren rel var) => Logic Boolo var -> Logic Boolo var -> Relation rel () 
+noto :: (MiniKanren rel var) => Logic Boolo var -> Logic Boolo var -> Relation rel
 noto = relation2 "noto" $ \x notX -> asum 
     [ do 
-        x === Trueo 
-        notX === Falso 
+        x <=> trueo 
+        notX <=> falso 
     , do 
-        x === Falso 
-        notX === Trueo 
+        x <=> falso 
+        notX <=> trueo 
     ]
 
-gto :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Boolo var -> Relation rel ()
+gto :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Boolo var -> Relation rel
 gto = relation3 "gto" $ \x y b -> fresh $ \b' -> do 
     call $ noto b b' 
     call $ leo x y b'
 
-minmaxo :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Nat var -> Logic Nat var -> Relation rel () 
+minmaxo :: (MiniKanren rel var) => Logic Nat var -> Logic Nat var -> Logic Nat var -> Logic Nat var -> Relation rel
 minmaxo = relation4 "minmaxo" $ \a b mn mx -> asum 
     [ do 
         mn <=> a 
         mx <=> b 
-        call $ leo a b (Ground Trueo)
+        call $ leo a b trueo
     , do 
         mx <=> a 
         mn <=> b 
-        call $ gto a b (Ground Trueo)   
+        call $ gto a b trueo
     ]
 
-smallesto :: (MiniKanren rel var) => Logic (List Nat) var -> Logic Nat var -> Logic (List Nat) var -> Relation rel () 
+smallesto :: (MiniKanren rel var) => Logic (List Nat) var -> Logic Nat var -> Logic (List Nat) var -> Relation rel
 smallesto = relation3 "smallesto" $ \l s l' -> asum 
     [ do 
-        l === Cons s (Ground Nil)
-        l' === Nil 
+        l <=> cons s nil
+        l' <=> nil 
     , fresh5 $ \h t s' t' mx -> do 
-        l' === Cons mx t' 
-        l === Cons h t 
+        l' <=> cons mx t' 
+        l <=> cons h t 
         call $ minmaxo h s' s mx 
         call $ smallesto t s' t'
     ]
 
-sorto :: (MiniKanren rel var) => Logic (List Nat) var -> Logic (List Nat) var -> Relation rel () 
+sorto :: (MiniKanren rel var) => Logic (List Nat) var -> Logic (List Nat) var -> Relation rel
 sorto = relation2 "sorto" $ \x y -> asum 
     [ do 
-        x === Nil 
-        y === Nil 
+        x <=> nil 
+        y <=> nil 
     , fresh3 $ \s xs xs' -> do 
-        y === Cons s xs' 
+        y <=> cons s xs' 
         call $ sorto xs xs' 
         call $ smallesto x s xs 
     ]

@@ -29,7 +29,8 @@ library
       Interpreters.KanrenPrinter
       Interpreters.KanrenTree
       Interpreters.SubstKanren
-      Interpreters.TreeMap
+      Interpreters.Transformers.PermuteConjuncts
+      Interpreters.Transformers.TreeMap
       MiniKanren
       OptionT
       Relations.Addo
@@ -39,6 +40,10 @@ library
       Types.Bool
       Types.List
       Types.Nat
+      V2.Interpreters.KanrenTree
+      V2.Interpreters.SubstKanren
+      V2.MiniKanren
+      V2.Relations.Addo
   other-modules:
       Paths_taglessMiniKanren
   autogen-modules:

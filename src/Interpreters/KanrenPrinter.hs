@@ -98,10 +98,10 @@ instance MiniKanren (KPrinter s) (SVar s) where
 
 
     call (Relation n _) = do
-        lift $ Value BindRet (error "evaluated call value") $ showString "call (" . showString n . showString ")"
+        lift $ Value BindRet () $ showString "call (" . showString n . showString ")"
 
     call' (Relation _ r) = r
-    
+
 instance MiniKanrenEval (KPrinter s) (SVar s) where
     readVar x = lift $ Value BindRet (Just $ error "evaluated variable value") $ showString "deref " . shows x
 
