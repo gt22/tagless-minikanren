@@ -25,6 +25,8 @@ source-repository head
 
 library
   exposed-modules:
+      Applicative.Interpreters.KanrenTree
+      Applicative.MiniKanren
       Interpreters.BacktrKanren
       Interpreters.KanrenPrinter
       Interpreters.KanrenTree
