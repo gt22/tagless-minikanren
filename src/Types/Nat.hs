@@ -5,6 +5,7 @@
 module Types.Nat where
 
 import MiniKanren
+import qualified Applicative.MiniKanren as AMK
 import Control.Applicative
 
 data Nat var = Z | S (Logic Nat var)
@@ -31,10 +32,21 @@ instance Unif Nat where
     unifyVal (S a) (S b) = unify a b
     unifyVal _ _ = empty
 
+instance AMK.Unif Nat where
+
+    unifyVal Z Z = pure ()
+    unifyVal (S a) (S b) = AMK.unify a b
+    unifyVal _ _ = empty
+
 instance Deref Nat Int where
 
     derefVal Z = return 0
     derefVal (S n) = succ <$> deref n
+
+instance AMK.Deref Nat Int where
+
+    derefVal Z = pure 0
+    derefVal (S n) = succ <$> AMK.deref n
 
 instance Deref Nat (Nat NoVars) where
 

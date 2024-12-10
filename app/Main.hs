@@ -2,15 +2,15 @@
 module Main (main) where
 
 
-import MiniKanren(Logic(Free))
-import MiniKanren
+import MiniKanren(Logic(Free), Relation)
+import Applicative.MiniKanren
 import Interpreters.BacktrKanren
 import Interpreters.KanrenTree
-import Interpreters.SubstKanren
+import Applicative.Interpreters.SubstKanren
 import Interpreters.KanrenPrinter (printKanren)
 import Types.Nat
 import Types.List
-import Relations.Addo(addoRel)
+import Applicative.Relations.Addo(addoRel)
 import Relations.Appendo
 import Relations.Sorto
 import Control.Applicative (Alternative)
@@ -20,6 +20,7 @@ import Stream
 import Stream (Delayable)
 import Control.Monad.State (execStateT)
 import Interpreters.Transformers.PermuteConjuncts
+import Applicative.Interpreters.Goal
 
 -- testSortoBacktr :: [[Int]]
 -- testSortoBacktr = runLP $ run $ \xs -> sorto xs (cons zro (cons (suc zro) (cons (suc $ suc zro) nil)))
@@ -32,6 +33,15 @@ import Interpreters.Transformers.PermuteConjuncts
 
 testAddoSubst :: (Delayable nondet) => nondet (Int, Int)
 testAddoSubst = runSubstKanren $ run2 $ \x z -> addoRel x (suc $ suc zro) z
+
+addoGoal :: Term s Nat -> Term s Nat -> Relation (Goal s)
+addoGoal x z = addoRel x (suc $ suc zro) z
+
+testAddoGoalSubst :: (Delayable nondet) => nondet (Int, Int)
+testAddoGoalSubst = runSubstKanren $ runGoal2' $ \x z -> call' $ addoGoal x z
+
+testAddoReverseGoalSubst :: (Delayable nondet) => nondet (Int, Int)
+testAddoReverseGoalSubst = runSubstKanren $ runGoal2' $ \x z -> reverseGoal $ call' $ addoGoal x z
 
 -- testAddoSubst :: (Delayable nondet) => nondet (Int, Int)
 -- testAddoSubst = runSubstKanren $ freshVar (\x -> freshVar (\z -> do
@@ -64,6 +74,8 @@ main = do
     -- print testAppendoBacktr
     -- print testAddoBacktr
     print (takeS 5 testAddoSubst)
+    print (takeS 5 testAddoGoalSubst)
+    print (takeS 5 testAddoReverseGoalSubst)
     -- print (takeS 5 testAddoEmbedSubst)
     -- putStrLn testAddoPrint
     -- print testAddoPerm

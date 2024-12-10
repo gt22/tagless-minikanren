@@ -84,6 +84,9 @@ fresh f = fresh_ $ f . Free
 fresh2 :: (MiniKanren rel var) => (Logic a var -> Logic b var -> rel s) -> rel s
 fresh2 f = fresh $ \a -> fresh $ \b -> f a b
 
+fresh2' :: (MiniKanren rel var) => (Var a var -> Var b var -> rel s) -> rel s
+fresh2' f = fresh_ $ \a -> fresh_ $ \b -> f a b
+
 fresh3 :: (MiniKanren rel var) => (Logic a var -> Logic b var -> Logic c var -> rel s) -> rel s
 fresh3 f = fresh $ \a -> fresh $ \b -> fresh $ \c -> f a b c
 
@@ -104,6 +107,13 @@ run2 f = fresh2 $ \x y -> do
     _ <- call' $ f x y
     a <- deref x
     b <- deref y
+    return (a, b)
+
+run2' :: (MiniKanrenEval rel var, Deref a a', Deref b b') => (Var a var -> Var b var -> rel ()) -> rel (a', b')
+run2' f = fresh2' $ \x y -> do
+    _ <- f x y
+    a <- deref (Free x)
+    b <- deref (Free y)
     return (a, b)
 
 run3 :: (MiniKanrenEval rel var, Deref a a', Deref b b', Deref c c') => (Logic a var -> Logic b var -> Logic c var -> Relation rel) -> rel (a', b', c')

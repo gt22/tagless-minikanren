@@ -21,6 +21,7 @@ data Kanren s a where
     Call :: String -> Kanren s () -> Kanren s ()
     TransparentCall :: String -> Kanren s () -> Kanren s ()
 
+    Conj :: Kanren s (a -> b) -> Kanren s a -> Kanren s b
     Disj :: Kanren s a -> Kanren s a -> Kanren s a
 
 newtype KanrenVar s a = KVar Int deriving (Show, Eq)
@@ -36,11 +37,7 @@ instance Applicative (Kanren s) where
 
     pure = Return
 
-    Fail <*> _ = Fail
-    (Return f) <*> b = f <$> b
-    (Fresh f) <*> b = Fresh $ \x -> f x <*> b
-    (Arg v f) <*> b = Arg v $ \x -> f x <*> b
-    (Disj a a') <*> b = Disj (a <*> b) (a' <*> b)
+    (<*>) = Conj
 
 instance Alternative (Kanren s) where
 
@@ -126,6 +123,10 @@ evalKanren (TransparentCall n r) = do
     s <- get
     let r' = evalState (evalKanren r) s
     return $ call' (relation n r')
+evalKanren (Conj a b) = do
+    b' <- evalKanren b
+    a' <- evalKanren a
+    return $ a' <*> b'
 evalKanren (Disj a b) = do
     a' <- evalKanren a
     b' <- evalKanren b
