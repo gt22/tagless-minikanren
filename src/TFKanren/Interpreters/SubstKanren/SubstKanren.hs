@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, DeriveFunctor, Rank2Types, GeneralisedNewtypeDeriving, TypeSynonymInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies, DeriveFunctor, Rank2Types, GeneralisedNewtypeDeriving, TypeSynonymInstances, MultiParamTypeClasses, FlexibleInstances #-}
 module TFKanren.Interpreters.SubstKanren.SubstKanren
 (
   runSubstKanren
@@ -12,6 +12,7 @@ import TFKanren.Interpreters.SubstKanren.Stream
 import Control.Monad.State
 import Unsafe.Coerce (unsafeCoerce)
 import TFKanren.Utils.Kanren
+import TFKanren.Core.Logic
 
 type VarRepr = Int
 type V s t = KVar (SubstKanren s) t
@@ -19,7 +20,7 @@ type V s t = KVar (SubstKanren s) t
 data Subst s = Subst { subst :: forall t. V s t -> Maybe t, nextVar :: VarRepr }
 
 emptySubst :: Subst s
-emptySubst = Subst { subst = \v -> error $ "Invalid variable " ++ displayVar v, nextVar = toEnum 0 }
+emptySubst = Subst { subst = \v -> error $ "Invalid variable " ++ show v, nextVar = toEnum 0 }
 
 readSubst :: V s a -> Subst s -> Maybe a
 readSubst v s = subst s v
@@ -41,13 +42,13 @@ readVar v = gets $ readSubst v
 
 makeVar :: Maybe (L a (R s)) -> R s (Var' a (R s))
 makeVar x = do
-    v <- SVar <$> gets nextVar
+    v <- gets $ SVar . nextVar
     modify $ succVar . updateSubst v x
     return $ v
 
 instance Kanren (R s) where
 
-    newtype instance (KVar (R s)) t = SVar VarRepr deriving (Functor, Show)
+    newtype instance KVar (R s) t = SVar VarRepr deriving (Functor)
 
     fresh_ FreshVar   = (makeVar Nothing >>=)
     fresh_ (ArgVar x) = (makeVar (Just x) >>=)
@@ -59,13 +60,17 @@ instance Kanren (R s) where
                         maybe (modify $ updateSubst v (Just y)) (unify y) x
     call_ Opaque (Relation _ (SubstKanren r)) = SubstKanren $ mapStateT Immature r
     call_ Transparent (Relation _ r) = r
-    displayVar (SVar v) = "x" ++ show v
+
+instance Show (KVar (R s) t) where
+    show (SVar v) = "x" ++ show v
+
+instance KanrenVar (KVar (R s)) where
 
 instance KanrenEval (R s) where
 
     derefVar v = do
-        x <- gets $ readSubst v
-        maybe (error $ "Unbound variable: " ++ displayVar v) eval x
+        x <- readVar v
+        maybe (SubstKanren $ lift $ Immature generate) eval x
 
 instance EqVar (R s) where 
     varEq (SVar a) (SVar b) = a == b

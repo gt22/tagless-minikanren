@@ -1,16 +1,16 @@
 {-# LANGUAGE GADTs, KindSignatures, DeriveFunctor, StandaloneDeriving, GeneralisedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances, TypeFamilies, Rank2Types, MultiParamTypeClasses, FlexibleContexts #-}
-module TFKanren.Interpreters.Normalization.ModeAnalysis where
+module TFKanren.Interpreters.Normalization.ModeAnalysis(
+    -- Unfinished
+) where
 
 import TFKanren.Core.Internal.Kanren
 import TFKanren.Utils.Kanren
 import Data.Kind (Type)
 import TFKanren.Core.Logic
-import Control.Applicative
 import TFKanren.Utils.Logic (vmap, vmapM_)
 import Control.Monad.State
 import TFKanren.Interpreters.Normalization.Normalize
-import Data.Foldable (traverse_)
-import TFKanren.Core.Internal.Logic (Field(..), LogicVar (..))
+import TFKanren.Core.Internal.Logic (Field(..), LogicType (..))
 
 type K rel = NormalizedKanrenT rel
 
@@ -37,18 +37,18 @@ updateMode (Call _ _ r) = helper r
             vmapM_ (\v' -> modify $ setMode v' In) x
             helper $ f (error "Accessed variable during mode analysis")
 
-isFullyGround :: (LogicVar a, EqVar rel) => L a (K rel) -> ModeState rel -> Bool
+isFullyGround :: (LogicType a, EqVar rel) => L a (K rel) -> ModeState rel -> Bool
 isFullyGround (Free v) s = getMode s v == In
-isFullyGround (Ground x) s = let (_, elems) = quote x in all (\(Field _ x') -> isFullyGround x' s) elems
+isFullyGround (Ground x) s = let (_, elems) = quote x in all (\(Field x') -> isFullyGround x' s) elems
 
 class (EqVar (MRel t), Kanren (MRel t), Monoid (Result t)) => ModeKanren t where
 
     type (MRel t) :: Type -> Type
     data (Result t) :: Type
 
-    modedFresh :: (LogicVar x) => FreshType rel x -> (Var' x (K rel) -> [Result t]) -> [Result t]
+    modedFresh :: (LogicType x) => FreshType rel x -> (Var' x (K rel) -> [Result t]) -> [Result t]
 
-    modedUnify :: (LogicVar a) => ModeState rel -> Var' a (K rel) -> L a (K rel) -> Result t
+    modedUnify :: (LogicType a) => ModeState rel -> Var' a (K rel) -> L a (K rel) -> Result t
 
     modedCall :: ModeState rel -> CallType -> Relation (K rel) -> Result t
 

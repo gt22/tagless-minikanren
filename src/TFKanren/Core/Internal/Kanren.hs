@@ -3,31 +3,29 @@ module TFKanren.Core.Internal.Kanren(module TFKanren.Core.Internal.Kanren, Alter
 
 import Data.Kind (Type)
 import Control.Applicative (Alternative(empty, (<|>)))
-import TFKanren.Core.Logic
+import TFKanren.Core.Internal.Logic(LogicType, Logic, Var, KanrenVar)
 
 data Relation (rel :: Type -> Type) = Relation String (rel ())
 
-data FreshType (rel :: Type -> Type) (t :: (Type -> Type) -> Type) where
+data FreshType (rel :: Type -> Type) (t :: Type) where
     FreshVar :: FreshType rel t
-    ArgVar :: (Kanren rel, LogicVar t) => Logic t (KVar rel) -> FreshType rel t
+    ArgVar :: (Kanren rel, LogicType t) => Logic t (KVar rel) -> FreshType rel t
+
 data CallType = Opaque | Transparent
 
-
-class (Alternative rel, Functor (KVar rel)) => Kanren rel where
+class (Alternative rel, KanrenVar (KVar rel)) => Kanren rel where
 
     data KVar rel :: Type -> Type
 
-    fresh_ :: (LogicVar t) => FreshType rel t -> (Var t (KVar rel) -> rel a) -> rel a
+    fresh_ :: (LogicType t) => FreshType rel t -> (Var t (KVar rel) -> rel a) -> rel a
 
-    unify :: (LogicVar a) => Logic a (KVar rel) -> Logic a (KVar rel) -> rel ()
+    unify :: (LogicType a) => Logic a (KVar rel) -> Logic a (KVar rel) -> rel ()
 
     call_ :: CallType -> Relation rel -> rel ()
 
-    displayVar :: KVar rel t -> String
-
 class (Kanren rel) => KanrenEval rel where
 
-    derefVar :: (Deref a g) => Var a (KVar rel) -> rel g
+    derefVar :: (LogicType a) => Var a (KVar rel) -> rel a
 
 class EqVar rel where
 

@@ -3,11 +3,10 @@ module TFKanren.Core.Logic
 (
   Var
 , Logic(Free, Ground)
-, NoVars
-, LogicVar, Deref
+, LogicType(unifyVal, derefVal, reify, project)
 , vmapM, vmapMVal
-, unifyVal
-, LogicShow(LogicShow)
+, reify', project', generate
+, showLogic
 ) where
 
 import TFKanren.Core.Internal.Logic

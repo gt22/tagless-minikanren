@@ -1,5 +1,10 @@
-{-# LANGUAGE TypeFamilies, DeriveFunctor, FlexibleInstances #-}
-module TFKanren.Interpreters.Typeless.Typeless where
+{-# LANGUAGE TypeFamilies, DeriveFunctor, FlexibleInstances, ExplicitForAll #-}
+module TFKanren.Interpreters.Typeless.Typeless(
+    Typeless, KVar(SynVar),
+    toTypeless, toTypeless',
+    freeArg, namedArg,
+    projectToTerm
+    ) where
 
 
 import TFKanren.Core.Internal.Kanren
@@ -8,18 +13,22 @@ import qualified TFKanren.Interpreters.Typeless.Def as Def
 import qualified TFKanren.Interpreters.Typeless.Syntax as S
 import qualified Data.Map as Map
 import Control.Monad.State
+import TFKanren.Utils.Kanren (embed)
 
 
 type BaseVar = S.S
 type Term = S.Term BaseVar
 type Def = Def.Def S.G BaseVar
 
-toTermP' :: (LogicVar a) => a (KVar Typeless) -> S.Term BaseVar
-toTermP' x = let (con, elems) = quote x in S.C (name con) $ map (\(Field _ x') -> toTermP x') elems
+toTerm' :: (LogicType a) => WithLogic a (KVar Typeless) -> S.Term BaseVar
+toTerm' x = let (con, elems) = quote x in S.C (name con) $ map (\(Field x') -> toTerm x') elems
 
-toTermP :: (LogicVar a) => Logic a (KVar Typeless) -> S.Term BaseVar
-toTermP (Free v) = S.V (unsyn v)
-toTermP (Ground x) = toTermP' x
+toTerm :: (LogicType a) => Logic a (KVar Typeless) -> S.Term BaseVar
+toTerm (Free v) = S.V (unsyn v)
+toTerm (Ground x) = toTerm' x
+
+projectToTerm :: (LogicType a) => a -> S.Term BaseVar
+projectToTerm = toTerm' . project
 
 
 data BaseKState = BaseKState { nextVar :: Int, defs :: Map.Map String Def, args :: [(BaseVar, Term)] }
@@ -62,50 +71,77 @@ updateDefs d m = Map.insert (Def.getName d) d m
 hasDef :: String -> Map.Map String Def -> Bool
 hasDef = Map.member
 
-data Typeless t = PK { runBodylessPK :: Computation (RaisedGoal t), runPK :: Computation (RaisedGoal t) } deriving (Functor)
+data Typeless t = PK { runBodylessPK :: Computation (), runPK :: Computation (RaisedGoal t) } deriving (Functor)
+
+body :: Computation (RaisedGoal t) -> Typeless t
+body = PK (pure ())
 
 instance Applicative Typeless where
 
-    pure x = PK (pure $ pure x) (pure $ pure x)
+    pure x = PK (pure ()) (pure $ pure x)
 
-    (PK f h) <*> (PK x y) = PK (liftA2 (<*>) f x) (liftA2 (<*>) h y)
+    (PK f h) <*> (PK x y) = PK (f *> x) (liftA2 (<*>) h y)
 
 instance Alternative Typeless where
 
-    empty = PK (pure empty) (pure empty)
+    empty = PK (pure ()) (pure empty)
 
-    (PK x a) <|> (PK y b) = PK (liftA2 (<|>) x y) (liftA2 (<|>) a b)
+    (PK x a) <|> (PK y b) = PK (x *> y) (liftA2 (<|>) a b)
 
-integrateDef' :: String -> Typeless t -> Map.Map String Def -> Map.Map String Def
-integrateDef' n r m | hasDef n m = m
-                    | otherwise = Map.insert n (Def.Def n (fst <$> args s') (goal rg)) (defs s')
+markerDef :: String -> Def.Def g a
+markerDef n = Def.Def n (error "Marker def args accessed") (error "Marker def goal accessed")
+
+integrateDef :: String -> Typeless t -> Map.Map String Def -> Map.Map String Def
+integrateDef n r m | hasDef n m = m
+                   | otherwise = updateDefs def (defs s')
     where
-        (rg, s') = runState (runPK r) (nullState { defs = Map.insert n (error "Anti-recursive marker-def accessed") m })
+        (rg, s') = runState (runPK r) (nullState { defs = updateDefs (markerDef n) m })
+        def = Def.Def n (fst <$> args s') (goal rg)
+
+extractArgs :: Typeless t -> [Term]
+extractArgs r = snd <$> args s
+    where
+        s = execState (runBodylessPK r) nullState
+
+addFresh :: FreshType rel a -> BaseVar -> RaisedGoal t -> RaisedGoal t
+addFresh FreshVar v rg = rg { goal = S.Fresh v (goal rg) }
+addFresh (ArgVar _) _ rg = rg
 
 instance Kanren Typeless where
 
-    newtype instance (KVar Typeless) t = SynVar { unsyn :: BaseVar } deriving (Eq, Ord, Show, Functor)
+    newtype instance (KVar Typeless) t = SynVar { unsyn :: BaseVar } deriving (Eq, Ord, Functor)
 
     fresh_ x f = PK (doFresh >>= runBodylessPK) (doFresh >>= runPK) 
         where
             updateArgs FreshVar _ s = args s
-            updateArgs (ArgVar x') v s = args s ++ [(v, toTermP x')]
+            updateArgs (ArgVar x') v s = args s ++ [(v, toTerm x')]
 
             doFresh = do
                 v <- gets nextVar
                 modify $ \s -> s { nextVar = succ v, args = updateArgs x v s }
-                pure $ f (SynVar v)
-    unify a b = PK (pure empty) $ pure $ g $ (toTermP a) S.=== (toTermP b)
-    call_ _ (Relation n pk) = PK (pure empty) $ do
-        modify $ \s -> s { defs = integrateDef' n pk (defs s) }
-        let s' = execState (runBodylessPK pk) nullState
-        pure $ g $ S.call n (snd <$> args s')
-    
-    displayVar (SynVar x) = show x
+                let (PK a b) =  f (SynVar v)
+                pure $ PK a (addFresh x v <$> b)
+    unify a b = body $ pure $ g $ (toTerm a) S.=== (toTerm b)
+    call_ _ (Relation n pk) = body $ do
+        modify $ \s -> s { defs = integrateDef n pk (defs s) }
+        pure $ g $ S.call n (extractArgs pk)
 
+instance Show (KVar Typeless a) where
+    show (SynVar v) = "x" ++ show v
+
+instance KanrenVar (KVar Typeless)
 
 toTypeless :: Relation Typeless -> [Def]
-toTypeless r = Map.elems $ defs $ execState (runPK $ call_ Transparent r) nullState
+toTypeless r = Map.elems $ defs $ execState (runPK $ embed r) nullState
 
-freeArg :: Logic a (KVar Typeless)
+toTypeless' :: Relation Typeless -> ([Def], [Term])
+toTypeless' (Relation n r) = (Map.elems $ updateDefs tld (defs s), extractArgs r)
+    where
+        (rg, s) = runState (runPK r) nullState
+        tld = Def.Def (n ++ "_goal") (fst <$> args s) (goal rg)
+
+freeArg :: forall a. Logic a (KVar Typeless)
 freeArg = error "Free arg accessed"
+
+namedArg :: forall a. Int -> Logic a (KVar Typeless)
+namedArg n = Free $ SynVar n

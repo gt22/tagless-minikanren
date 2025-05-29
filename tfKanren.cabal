@@ -30,10 +30,16 @@ library
       TFKanren.Core.Kanren
       TFKanren.Core.Logic
       TFKanren.Examples.Relations.Addo
+      TFKanren.Examples.Relations.Arith
       TFKanren.Examples.Relations.Balance
+      TFKanren.Examples.Types.Bool
       TFKanren.Examples.Types.List
-      TFKanren.Examples.Types.Nat
+      TFKanren.Examples.Types.Maybe
+      TFKanren.Examples.Types.Natural
+      TFKanren.Examples.Types.Pair
       TFKanren.Examples.Types.Tree
+      TFKanren.Examples.Types.Unit
+      TFKanren.Examples.Types.Void
       TFKanren.Interpreters.Normalization.ModeAnalysis
       TFKanren.Interpreters.Normalization.Normalize
       TFKanren.Interpreters.SubstKanren.Stream
@@ -44,6 +50,7 @@ library
       TFKanren.TFKanren
       TFKanren.Utils.Kanren
       TFKanren.Utils.Logic
+      TFKanren.Utils.Template.TypeTemplate
       TFKanren.Utils.Type
   other-modules:
       Paths_tfKanren
@@ -51,11 +58,12 @@ library
       Paths_tfKanren
   hs-source-dirs:
       src
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-unused-imports -Wno-unused-top-binds
   build-depends:
       base >=4.7 && <5
     , containers
     , mtl
+    , template-haskell
     , transformers
   default-language: Haskell2010
 
@@ -67,11 +75,12 @@ executable tfKanren-exe
       Paths_tfKanren
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-unused-imports -Wno-unused-top-binds -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , mtl
+    , template-haskell
     , tfKanren
     , transformers
   default-language: Haskell2010
@@ -85,11 +94,12 @@ test-suite tfKanren-test
       Paths_tfKanren
   hs-source-dirs:
       test
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-unused-imports -Wno-unused-top-binds -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , mtl
+    , template-haskell
     , tfKanren
     , transformers
   default-language: Haskell2010

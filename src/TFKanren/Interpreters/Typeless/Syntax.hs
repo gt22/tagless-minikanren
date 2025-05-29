@@ -7,7 +7,7 @@
 {-# LANGUAGE IncoherentInstances   #-}
 
 
-module TFKanren.Interpreters.Typeless.Syntax where
+module TFKanren.Interpreters.Typeless.Syntax(module TFKanren.Interpreters.Typeless.Syntax) where
 
 import           Data.Char          (toLower)
 import           Data.List          (intercalate, nub)
@@ -141,37 +141,6 @@ isFailure :: G a -> Bool
 isFailure (Invoke f []) = f == failureName
 isFailure _ = False
 
-class Eq a => FreeVariables t a where
-  fv :: t a -> [a]
-
-instance Eq a => FreeVariables Term a where
-  fv :: Eq a => Term a -> [a]
-  fv = nub . go
-    where
-      go (V v)    = [v]
-      go (C _ ts) = concatMap go ts
-
-instance FreeVariables G S where
-  fv :: G S -> [S]
-  fv = nub . go
-    where
-      go (t1 :=:  t2) = fv t1 ++ fv t2
-      go (Conjunction x y gs) = concatMap go (x : y : gs)
-      go (Disjunction x y gs) = concatMap go (x : y : gs)
-      go (Invoke _ ts) = concatMap fv ts
-      -- go (Fresh x g)   = filter (x /=) $ go g
-
-instance FreeVariables G X where
-  fv :: G X -> [X]
-  fv = nub . go
-    where
-      go (t1 :=: t2) = fv t1 ++ fv t2
-      go (Conjunction x y gs) = concatMap go (x : y : gs)
-      go (Disjunction x y gs) = concatMap go (x : y : gs)
-      go (Invoke _ ts) = concatMap fv ts
-      go (Fresh x g) = filter (x /=) $ go g
-      go (Delay g) = go g
-
 topLevelFreshVars :: G X -> ([X], G X)
 topLevelFreshVars (Fresh x g) =
   let (vs, goal) = topLevelFreshVars g in
@@ -188,6 +157,7 @@ substInGoal v t (Conjunction x y gs) = unsafeConj $ substInGoal v t <$> (x : y :
 substInGoal v t (Disjunction x y gs) = unsafeDisj $ substInGoal v t <$> (x : y : gs)
 substInGoal v t g@(Fresh n g') = if v == n then g else Fresh n $ substInGoal v t g'
 substInGoal v t (Invoke n ts) = Invoke n $ map (substInTerm v t) ts
+substInGoal v t (Delay g) = Delay $ substInGoal v t g
 
 instance Show a => Show (Term a) where
   show (V v) = showVar v
@@ -276,7 +246,7 @@ prettifyNum intPrint varPrint =
     go acc (V v) = return $ printf "(%s + %s)" (intPrint acc) (varPrint v)
     go acc c | isSucc c = go (1 + acc) (predec c)
     go acc c | isZero c = return $ intPrint acc
-    go _ c = Nothing
+    go _ _ = Nothing
 
 isNil :: [Char] -> Bool
 isNil s = map toLower s == "nil" || s == "[]"
@@ -289,7 +259,7 @@ isZero (C o []) = let l = map toLower o in l == "o" || l == "z" || l == "zero"
 isZero _ = False
 
 isSucc :: Term v -> Bool
-isSucc (C s [n]) = let l = map toLower s in l == "s" || l == "succ"
+isSucc (C s [_]) = let l = map toLower s in l == "s" || l == "succ"
 isSucc _ = False
 
 isPair :: [Char] -> Bool
@@ -313,7 +283,7 @@ instance Show a => ShowVar a where
   
 predec :: Term a -> Term a
 predec c@(C _ [a]) | isSucc c = a
-predec c = error $ printf "Failed to get predecessor"
+predec _ = error $ printf "Failed to get predecessor"
 
 instance Dot a => Dot (G a) where
   dot (t1 :=:  t2) = printf "%s = %s" (dot t1) (dot t2)

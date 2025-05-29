@@ -1,11 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs     #-}
 {-# LANGUAGE FlexibleInstances#-}
-
 {-# LANGUAGE IncoherentInstances #-}
-module TFKanren.Interpreters.Typeless.Def where
+module TFKanren.Interpreters.Typeless.Def(module TFKanren.Interpreters.Typeless.Def) where
 
-import           Text.Printf (printf)
+import Text.Printf (printf)
 
 data Def g a = Def
   { getName :: String

@@ -19,10 +19,11 @@ import TFKanren.Core.Logic
 import Control.Applicative
 import Data.Foldable (traverse_)
 import TFKanren.Utils.Logic (vmap)
+import Data.Functor (($>))
 
 data NormalizedBaseT (rel :: Type -> Type) where
 
-    Unify :: (LogicVar a) => Var' a (NormalizedKanrenT rel) -> L a (NormalizedKanrenT rel) -> NormalizedBaseT rel
+    Unify :: (LogicType a) => Var' a (NormalizedKanrenT rel) -> L a (NormalizedKanrenT rel) -> NormalizedBaseT rel
     Call :: CallType -> String -> NormalizedKanrenT rel () -> NormalizedBaseT rel
 
 newtype NormalizedConjT rel = Conj { unConj :: [NormalizedBaseT rel] }
@@ -43,7 +44,7 @@ disj = Disj
 data NormalizedFreshT rel a where
 
     FreshDone :: NormalizedDisjT rel a -> NormalizedFreshT rel a
-    Fresh :: (LogicVar x) => FreshType (NormalizedKanrenT rel) x -> (Var' x (NormalizedKanrenT rel) -> NormalizedFreshT rel a) -> NormalizedFreshT rel a
+    Fresh :: (LogicType x) => FreshType (NormalizedKanrenT rel) x -> (Var' x (NormalizedKanrenT rel) -> NormalizedFreshT rel a) -> NormalizedFreshT rel a
 
 type NormalizedKanrenT rel = NormalizedFreshT rel
 
@@ -90,30 +91,32 @@ instance Alternative (NormalizedFreshT rel) where
 
 instance (Kanren rel) => Kanren (NormalizedKanrenT rel) where
 
-    newtype instance (KVar (NormalizedKanrenT rel)) a = NV (KVar rel a)
+    newtype instance (KVar (NormalizedKanrenT rel)) a = NV (KVar rel a) deriving KanrenVar
 
     fresh_ = Fresh
     unify = flatteningUnify (\x t -> FreshDone $ disj [raise (conj [Unify x t]) ()]) -- TODO: Linearize unifications
 
     call_ t (Relation s r) = FreshDone $ disj [raise (conj [Call t s r]) ()]
 
-    displayVar (NV v) = displayVar v
-
 instance (Kanren rel) => Functor (KVar (NormalizedKanrenT rel)) where
 
     fmap f (NV x) = NV $ fmap f x
+
+instance (Kanren rel) => Show (KVar (NormalizedKanrenT rel) a) where
+
+    show (NV v) = show v
 
 instance (EqVar rel) => EqVar (NormalizedKanrenT rel) where
 
     varEq (NV x) (NV y) = varEq x y
 
-restoreVar :: (Kanren rel, LogicVar a) => Var' a (NormalizedKanrenT rel) -> Var' a rel
+restoreVar :: (Kanren rel, LogicType a) => Var' a (NormalizedKanrenT rel) -> Var' a rel
 restoreVar (NV v) = (vmap restoreVar) <$> v
 
-wrapVar :: (Kanren rel, LogicVar a) => Var' a rel -> Var' a (NormalizedKanrenT rel)
+wrapVar :: (Kanren rel, LogicType a) => Var' a rel -> Var' a (NormalizedKanrenT rel)
 wrapVar v = NV $ vmap wrapVar <$> v
 
-restoreFreshType :: (Kanren rel, LogicVar a) => FreshType (NormalizedKanrenT rel) a -> FreshType rel a
+restoreFreshType :: (Kanren rel, LogicType a) => FreshType (NormalizedKanrenT rel) a -> FreshType rel a
 restoreFreshType FreshVar = FreshVar
 restoreFreshType (ArgVar x) = ArgVar $ vmap restoreVar x
 
@@ -125,10 +128,10 @@ restoreConj :: (Kanren rel) => NormalizedConjT rel -> rel ()
 restoreConj (Conj gs) = traverse_ restoreBase gs
 
 restoreRaise :: (Kanren rel) => NormalizedRaiseT rel a -> rel a
-restoreRaise (Raise g x) = x <$ restoreConj g
+restoreRaise (Raise g x) = restoreConj g $> x
 
 restoreDisj :: (Kanren rel) => NormalizedDisjT rel a -> rel a
-restoreDisj (Disj gs) = asum (restoreRaise <$> gs)
+restoreDisj (Disj gs) = asum $ restoreRaise <$> gs
 
 restoreFresh :: (Kanren rel) => NormalizedFreshT rel a -> rel a
 restoreFresh (FreshDone g) = restoreDisj g
@@ -141,7 +144,7 @@ normalizeRelation :: (Kanren rel) => Relation (NormalizedKanrenT rel) -> Relatio
 normalizeRelation (Relation s r) = Relation s (normalize r)
 
 
-class (Kanren (UnderlyingRel rel)) => NormalizedKanren (rel :: Type -> Type) where
+class (Kanren (UnderlyingRel rel), Applicative (NRaise rel), Alternative (NDisj rel)) => NormalizedKanren (rel :: Type -> Type) where
 
     type UnderlyingRel rel :: Type -> Type
 
@@ -150,11 +153,11 @@ class (Kanren (UnderlyingRel rel)) => NormalizedKanren (rel :: Type -> Type) whe
     data NRaise rel :: Type -> Type
     data NDisj rel :: Type -> Type
 
-    unifyVarNorm :: (LogicVar a) => Var' a (UnderlyingRel rel) -> L a (UnderlyingRel rel) -> NBase rel
+    unifyVarNorm :: (LogicType a) => Var' a (UnderlyingRel rel) -> L a (UnderlyingRel rel) -> NBase rel
 
     callNorm_ :: CallType -> Relation rel -> NBase rel
 
-    freshNorm_ :: (LogicVar a) => FreshType (UnderlyingRel rel) a -> (Var' a (UnderlyingRel rel) -> rel x) -> rel x
+    freshNorm_ :: (LogicType a) => FreshType (UnderlyingRel rel) a -> (Var' a (UnderlyingRel rel) -> rel x) -> rel x
 
     liftBase :: NBase rel -> NConj rel
     liftConj :: NConj rel -> a -> NRaise rel a

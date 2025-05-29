@@ -3,14 +3,14 @@ module TFKanren.Core.Kanren
   Relation(Relation)
 , Kanren(KVar)
 , KanrenEval
-, LogicVar
+, LogicType
 , L
 , fresh, fresh2, fresh3, fresh4, fresh5
 , relation, relation2, relation3, relation4, relation5
 , call, embed
 , eval
 , run, run2, run3, run4, run5
-, (===), (<=>)
+, (===), (<=>), (<->)
 , conde
 ) where
 

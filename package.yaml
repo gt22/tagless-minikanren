@@ -24,6 +24,7 @@ dependencies:
 - mtl
 - containers
 - transformers
+- template-haskell
 
 ghc-options:
 - -Wall
@@ -35,6 +36,8 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
+- -Wno-unused-imports
+- -Wno-unused-top-binds
 
 library:
   source-dirs: src
